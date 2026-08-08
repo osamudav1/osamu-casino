@@ -60,41 +60,58 @@ class GameConfig(BaseModel):
 
 @lru_cache
 def parse_config_file() -> dict:
-    file_path = getenv("CONFIG_FILE_PATH", "settings.toml")
-    
-    config_data = {}
-    path = Path(file_path)
-    if path.is_file():
-        with open(path, "rb") as file:
-            config_data = load(file)
-    else:
-        # Fallback default dictionary if file doesn't exist
-        config_data = {
-            "bot": {
-                "token": "1234567890:placeholder",
-                "fsm_mode": "redis",
-                "owner_id": 0
-            },
-            "redis": {
-                "dsn": "redis://localhost:6379/0"
-            },
-            "logs": {
-                "project_name": "casino_bot",
-                "show_datetime": True,
-                "datetime_format": "%Y-%m-%d %H:%M:%S",
-                "show_debug_logs": False,
-                "time_in_utc": False,
-                "renderer": "json",
-                "use_colors_in_console": False,
-                "allow_third_party_logs": True
-            },
-            "game_config": {
-                "starting_points": 50,
-                "send_gameover_sticker": True,
-                "throttle_time_spin": 2,
-                "throttle_time_other": 1
-            }
+    # Default base configuration dictionary
+    config_data = {
+        "bot": {
+            "token": "1234567890:placeholder",
+            "fsm_mode": "redis",
+            "owner_id": 0
+        },
+        "redis": {
+            "dsn": "redis://localhost:6379/0"
+        },
+        "logs": {
+            "project_name": "casino_bot",
+            "show_datetime": True,
+            "datetime_format": "%Y-%m-%d %H:%M:%S",
+            "show_debug_logs": False,
+            "time_in_utc": False,
+            "renderer": "json",
+            "use_colors_in_console": False,
+            "allow_third_party_logs": True
+        },
+        "game_config": {
+            "starting_points": 50,
+            "send_gameover_sticker": True,
+            "throttle_time_spin": 2,
+            "throttle_time_other": 1
         }
+    }
+
+    # Try loading from CONFIG_FILE_PATH or settings.toml or parent directories
+    file_paths = []
+    env_path = getenv("CONFIG_FILE_PATH")
+    if env_path:
+        file_paths.append(Path(env_path))
+    file_paths.extend([
+        Path("settings.toml"),
+        Path(__file__).parent.parent / "settings.toml"
+    ])
+
+    for path in file_paths:
+        if path.is_file():
+            try:
+                with open(path, "rb") as file:
+                    file_data = load(file)
+                    # Recursively update config_data
+                    for key, val in file_data.items():
+                        if isinstance(val, dict) and key in config_data:
+                            config_data[key].update(val)
+                        else:
+                            config_data[key] = val
+                break
+            except Exception:
+                pass
 
     # Override with environment variables if present
     env_token = getenv("BOT_TOKEN")
