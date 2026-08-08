@@ -12,5 +12,7 @@ services:
         value: 3.11.0
       - key: BOT_TOKEN
         sync: false
+      - key: OWNER_ID
+        sync: false
       - key: REDIS_URL
         sync: false

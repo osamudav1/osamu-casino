@@ -22,6 +22,7 @@ class FSMMode(StrEnum):
 class BotConfig(BaseModel):
     token: SecretStr
     fsm_mode: FSMMode
+    owner_id: int = 0
 
     @field_validator('fsm_mode', mode="before")
     @classmethod

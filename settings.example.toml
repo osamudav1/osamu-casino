@@ -4,6 +4,8 @@ token = "1234567890:AaBbCcDdEeFfGrOoShALlMmNnOoPpQqRrSs"
 # Where to store users' data. Options: "memory", "redis".
 # Memory storage gets wiped upon bot restart, Redis uses persistency.
 fsm_mode = "redis"
+# Telegram User ID of the bot owner
+owner_id = 123456789
 
 
 [redis]
