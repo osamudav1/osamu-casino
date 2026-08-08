@@ -13,6 +13,7 @@ from bot.config_reader import GameConfig
 from bot.dice_check import get_combo_text, get_score_change
 from bot.filters import SpinTextFilter
 from bot.keyboards import get_spin_keyboard
+from bot.db import get_user_balance, update_user_balance
 
 flags = {"throttling_key": "spin"}
 router = Router()
@@ -26,13 +27,12 @@ async def cmd_spin(
         l10n: FluentLocalization,
         game_config: GameConfig,
 ):
-    # Get current score
-    user_data = await state.get_data()
-    user_score = user_data.get("score", game_config.starting_points)
+    user_id = message.from_user.id
+    # Get current score from MongoDB
+    user_score = await get_user_balance(user_id, game_config.starting_points)
 
-    if user_score == 0:
+    if user_score <= 0:
         if game_config.send_gameover_sticker:
-            # In case sticker file_id is invalid or missing
             with suppress(TelegramBadRequest):
                 await message.answer_sticker(l10n.format_value("zero-balance-sticker"))
         await message.answer(l10n.format_value("zero-balance"))
@@ -49,13 +49,15 @@ async def cmd_spin(
     else:
         win_or_lose_text = l10n.format_value("spin-success", {"score-value": score_change})
 
-    # Updating score in FSM data
+    # Updating score in MongoDB and FSM data
     new_score = user_score + score_change
+    if new_score < 0:
+        new_score = 0
+
+    await update_user_balance(user_id, new_score)
     await state.update_data(score=new_score)
 
     # This delay is roughly equivalent of animation duration
-    # of slot machine. Depending on dice value,
-    # animation duration is different, but approx. 2 seconds
     await sleep(2.0)
     await msg.reply(
         l10n.format_value(

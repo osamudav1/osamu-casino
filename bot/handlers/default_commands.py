@@ -6,6 +6,7 @@ from fluent.runtime import FluentLocalization
 
 from bot.config_reader import GameConfig
 from bot.keyboards import get_spin_keyboard
+from bot.db import get_user_balance
 
 flags = {"throttling_key": "default"}
 router = Router()
@@ -18,9 +19,12 @@ async def cmd_start(
         l10n: FluentLocalization,
         game_config: GameConfig,
 ):
-    start_text = l10n.format_value("start-text", {"points": game_config.starting_points})
+    user_id = message.from_user.id
+    current_balance = await get_user_balance(user_id, game_config.starting_points)
+    
+    start_text = l10n.format_value("start-text", {"points": current_balance})
 
-    await state.update_data(score=game_config.starting_points)
+    await state.update_data(score=current_balance)
     await message.answer(start_text, reply_markup=get_spin_keyboard(l10n))
 
 
