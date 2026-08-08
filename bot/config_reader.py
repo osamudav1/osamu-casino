@@ -1,6 +1,7 @@
 from enum import StrEnum, auto
 from functools import lru_cache
 from os import getenv
+import os
 from tomllib import load
 from typing import Type, TypeVar
 
@@ -31,13 +32,13 @@ class BotConfig(BaseModel):
 
 class LogConfig(BaseModel):
     project_name: str = "my project"
-    show_datetime: bool
-    datetime_format: str
-    show_debug_logs: bool
-    time_in_utc: bool
-    use_colors_in_console: bool
-    renderer: LogRenderer
-    allow_third_party_logs: bool
+    show_datetime: bool = True
+    datetime_format: str = "%Y-%m-%d %H:%M:%S"
+    show_debug_logs: bool = False
+    time_in_utc: bool = False
+    use_colors_in_console: bool = False
+    renderer: LogRenderer = LogRenderer.JSON
+    allow_third_party_logs: bool = True
 
     @field_validator('renderer', mode="before")
     @classmethod
@@ -50,22 +51,45 @@ class RedisConfig(BaseModel):
 
 
 class GameConfig(BaseModel):
-    starting_points: int
-    send_gameover_sticker: bool
-    throttle_time_spin: int
-    throttle_time_other: int
+    starting_points: int = 50
+    send_gameover_sticker: bool = True
+    throttle_time_spin: int = 2
+    throttle_time_other: int = 1
+
 
 @lru_cache
 def parse_config_file() -> dict:
-    # Проверяем наличие переменной окружения, которая переопределяет путь к конфигу
     file_path = getenv("CONFIG_FILE_PATH")
-    if file_path is None:
-        error = "Could not find settings file"
-        raise ValueError(error)
-    # Читаем сам файл, пытаемся его распарсить как TOML
-    with open(file_path, "rb") as file:
-        config_data = load(file)
-    return config_data
+    if file_path and os.path.exists(file_path):
+        with open(file_path, "rb") as file:
+            return load(file)
+    
+    # Fallback structure populated from environment variables
+    return {
+        "bot": {
+            "token": getenv("BOT_TOKEN", "1234567890:TOKEN"),
+            "fsm_mode": getenv("FSM_MODE", "memory")
+        },
+        "redis": {
+            "dsn": getenv("REDIS_DSN", "redis://localhost:6379")
+        },
+        "logs": {
+            "project_name": getenv("PROJECT_NAME", "casino_bot"),
+            "show_datetime": True,
+            "datetime_format": "%Y-%m-%d %H:%M:%S",
+            "show_debug_logs": False,
+            "time_in_utc": False,
+            "renderer": "json",
+            "use_colors_in_console": False,
+            "allow_third_party_logs": True
+        },
+        "game_config": {
+            "starting_points": 50,
+            "send_gameover_sticker": True,
+            "throttle_time_spin": 2,
+            "throttle_time_other": 1
+        }
+    }
 
 
 @lru_cache
