@@ -10,27 +10,41 @@ db = client[DB_NAME]
 users_collection = db[COLLECTION_NAME]
 
 async def get_user_balance(user_id: int, default_points: int = 50) -> int:
+    # Search by user_id or id or telegram id fields
     user = await users_collection.find_one({"user_id": user_id})
     if not user:
-        # Check alternative field names like id or _id if common
+        user = await users_collection.find_one({"id": user_id})
+    if not user:
         user = await users_collection.find_one({"_id": user_id})
     
-    if user and "balance" in user:
-        return int(user["balance"])
-    elif user and "$" in user:
-        return int(user["$"])
+    if user:
+        if "$" in user:
+            return int(user["$"])
+        elif "balance" in user:
+            return int(user["balance"])
     
-    # If user doesn't exist, create with starting balance
+    # If user doesn't exist, create with starting balance in '$'
     await users_collection.update_one(
         {"user_id": user_id},
-        {"$setOnInsert": {"balance": default_points}},
+        {"$setOnInsert": {"$": default_points}},
         upsert=True
     )
     return default_points
 
 async def update_user_balance(user_id: int, new_balance: int):
-    await users_collection.update_one(
+    # Update '$' field in MongoDB
+    result = await users_collection.update_one(
         {"user_id": user_id},
-        {"$set": {"balance": new_balance}},
-        upsert=True
+        {"$set": {"$": new_balance}}
     )
+    if result.matched_count == 0:
+        result = await users_collection.update_one(
+            {"id": user_id},
+            {"$set": {"$": new_balance}}
+        )
+    if result.matched_count == 0:
+        await users_collection.update_one(
+            {"user_id": user_id},
+            {"$set": {"$": new_balance}},
+            upsert=True
+        )
