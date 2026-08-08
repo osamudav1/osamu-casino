@@ -14,6 +14,8 @@ from bot.handlers import default_commands, spin
 from bot.logs import get_structlog_config
 from bot.middlewares.throttling import ThrottlingMiddleware
 from bot.ui_commands import set_bot_commands
+from bot.health import start_health_server
+import os
 
 
 async def main():
@@ -64,6 +66,11 @@ async def main():
     await set_bot_commands(bot, l10n)
 
     logger: FilteringBoundLogger = structlog.get_logger()
+    
+    # Start health check server for Render
+    port = int(os.getenv("PORT", "8080"))
+    await start_health_server(port)
+    
     await logger.ainfo("Starting polling...")
     try:
         await dp.start_polling(bot)

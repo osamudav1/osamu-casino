@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: osamu-casino-bot
+    env: python
+    region: frankfurt
+    plan: free
+    buildCommand: "pip install --upgrade pip && pip install uv && uv sync --frozen"
+    startCommand: "python -m bot"
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: BOT_TOKEN
+        sync: false
+      - key: REDIS_URL
+        sync: false
